@@ -1,0 +1,89 @@
+{
+    "itemStyle": [
+        {
+            "sType": 1,
+            "logo": "0/louti.png"
+        },
+        {
+            "sType": 2,
+            "logo": "0/futi.png"
+        },
+        {
+            "sType": 3,
+            "logo": "0/huoti.png"
+        },
+        {
+            "sType": 4,
+            "logo": "0/keti.png"
+        },
+        {
+            "sType": 5,
+            "logo": "0/nanwei.png"
+        },
+        {
+            "sType": 6,
+            "logo": "0/nvwei.png"
+        },
+        {
+            "sType": 7,
+            "logo": "0/weishengjian.png"
+        },
+        {
+            "sType": 8,
+            "logo": "0/canwei.png"
+        },
+        {
+            "sType": 10,
+            "logo": "0/churukou.png"
+        },
+
+        {
+            "sType": 19,
+            "logo": "0/shoupiaoji.png"
+        },
+        {
+            "sType": 20,
+            "logo": "0/shouhuoji.png"
+        },
+        {
+            "sType": 21,
+            "logo": "0/zhaji.png"
+        },
+        {
+            "sType": 23,
+            "logo": "0/anjianji.png"
+        },
+        {
+            "sType": 29,
+            "logo": "0/chukou.png"
+        },
+        {
+            "sType": 30,
+            "logo": "0/rukou.png"
+        },
+        {
+            "sType": 2011,
+            "logo": "0/A.png"
+        },
+        {
+            "sType": 2012,
+            "logo": "0/B.png"
+        },
+        {
+            "sType": 2013,
+            "logo": "0/C.png"
+        },
+
+        {
+            "sType": 0,
+            "strokecolor": "#C3DFFD"
+        }
+    ],
+    "moduleStyle": {
+        "wall": {
+            "sType": "1000",
+            "opacity": "0.5",
+            "fillcolor": "#3452B4"
+        }
+    }
+}

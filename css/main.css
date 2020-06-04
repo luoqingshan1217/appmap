@@ -1,0 +1,90 @@
+body,
+html {
+	padding: 0;
+	margin: 0;
+}
+
+#map {
+	width: 100vw;
+	height: 100vh;
+}
+
+.van-button-custom {
+	width: 80px;
+	background: #e5e5e5;
+	margin: 5px;
+}
+
+.flex {
+	display: -webkit-box;
+	display: -webkit-flex;
+	display: flex;
+}
+
+.flex-centers {
+	align-content: center;
+	align-items: center;
+}
+
+.flex-centerss {
+	justify-content: center;
+	-webkit-justify-content: center;
+}
+
+.flex-centersss {
+	-webkit-align-items: center;
+	align-items: center;
+}
+
+.flex-center {
+	justify-content: center;
+	-webkit-justify-content: center;
+	align-items: center;
+	-webkit-align-items: center;
+}
+
+.flex-space {
+	justify-content: space-between;
+}
+
+.flex-column {
+	flex-direction: column;
+	-webkit-flex-direction: column;
+}
+
+.flex-around {
+	justify-content: space-around;
+}
+
+.flex-row {
+	flex-direction: row;
+}
+
+
+.flex-start {
+	justify-content: flex-start;
+}
+
+.flex-end {
+	justify-content: flex-end;
+}
+
+.flex-end-align {
+	align-items: flex-end;
+}
+
+
+.flex-wrap {
+	flex-wrap: wrap;
+}
+
+.text-wrap {
+	word-wrap: break-word;
+	word-break: break-all;
+}
+
+.text-hiddle {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}

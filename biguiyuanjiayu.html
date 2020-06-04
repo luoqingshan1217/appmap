@@ -1,0 +1,3844 @@
+<!DOCTYPE html>
+<html lang="en">
+	<link>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>嘿好停-碧桂园嘉裕地图导航</title>
+	<link rel="stylesheet" href="./css/vant.css" />
+	<link href="./css/main.css" rel="stylesheet" />
+	<body>
+		<div id="app">
+			<div id="map"></div>
+			<div style="position: absolute;left:10px;top:20px;">
+				<input class="btn-default" style="height: 16px; width: 120px; vertical-align: middle; font-size: 12px;" type="text"
+				 v-model="searchinput" placeholder="请输入停车位" />
+				<van-button type="info" icon="search" size="mini" @click="onSearch"></van-button>
+				<van-button type="info" icon="wap-nav" size="mini" @click="onSeachMore"></van-button>
+				<van-button type="info" icon="location" size="mini" @click=""></van-button>
+				<br />
+				<van-popup v-model="seachShow" position="top">
+					<van-row>
+						<v-col span="24">
+							<van-cell title="停车场查询" icon="location" />
+						</v-col>
+					</van-row>
+					<van-row>
+						<van-col span="24">
+							<van-search v-model="searchinput" placeholder="车位" show-action use-action-slot shape="round" bind:clear="clearSearch">
+								<div slot="action" @click="onSearch">搜索</div>
+							</van-search>
+						</van-col>
+					</van-row>
+					<van-row>
+						<v-col span="24">
+							<van-cell title="电梯位置" icon="location" />
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="p2LiftClick">P2层电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="p1LiftClick">P1层电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="b1LiftClick">B1层电梯</van-button>
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="b2LiftClick">B2层电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="b3LiftClick">B3层电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="b4LiftClick">B4层电梯</van-button>
+						</v-col>
+					</van-row>
+					<van-row>
+						<v-col span="24">
+							<van-cell title="出入口位置" icon="location" />
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="exitClick">出口</van-button>
+						</v-col>
+					</van-row>
+				</van-popup>
+			</div>
+		</div>
+		<script src="./js/vue.min.js"></script>
+		<script src="./js/jquery-3.4.1.min.js"></script>
+		<script src="./js/vant.min.js"></script>
+		<script src="./js/AirocovMap.js"></script>
+		<script src="./js/GLTFLoader.min.js"></script>
+		<script type="text/javascript">
+			var map = null; //地图模型
+			var floorP1; //P1楼层对象
+			var floorP2; //P2楼层对象
+			var floorB1; //B1楼层对象
+			var floorB2; //B2楼层对象
+			var floorB3; //B3楼层对象
+			var floorB4; //B4楼层对象
+			var parkingSpaceAll = []; //所有车位
+			var floorArr = []; //所有楼层对象
+			var startPoint = [21.775336105242832, 44.52849338470138]; //默认起始点
+			var startfloor; //我所在的楼层
+			var currentFloor; //我所在的楼层对象
+			var endfloor; //终点所在楼层
+			var targetFloor; //终点所在楼层对象
+			var endPoint = []; //结束点
+			var polyline; //路线
+			var floorslist = ['P2', 'P1', 'B1', 'B2', 'B3', 'B4'];
+			var V1 = [43.385186453376804, 89.25231642020977]; //P1P2B1入口
+			var V2 = [39.09048630862461, 8.101648669363156]; //B1B2B3B4
+			var V3 = [-33.30681145308831, 11.420178632426444]; //B1B2B3
+			var V4 = [36.32086127843023, 22.6212747704772]; //P1B1B2B3B4
+			var V5 = [-1.5879039630907386, 11.350095397654295]; //B2B3
+			var V6 = [34.682979120412355, 69.2946560575174]; //P1P2出口
+			var timemap;
+			var floorSwitch; //楼层切换控件
+			var paths = {
+				P1: '',
+				P2: '',
+				B1: '',
+				B2: '',
+				B3: '',
+				B4: ''
+			};
+			new Vue({
+				el: '#app',
+				data: function() {
+					return {
+						wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						map: null, //map对象
+						P1: 'P1',
+						P2: 'P2',
+						B1: 'B1',
+						B2: 'B2',
+						B3: 'B3',
+						B4: 'B4',
+						searchinput: '', //搜索坐标
+						seachShow: false, //展示搜索条件
+						ismap: false, //map地图是否加载完毕
+						isfloorSwitch: true, //是否是首次获取定位
+					}
+				},
+				mounted() {
+					//创建websocket
+				},
+				methods: {
+					initWebSocket() {
+						//判断当前浏览器是否支持WebSocket
+						if ("WebSocket" in window) {
+							//初始化weosocket(必须)
+							this.websock = new WebSocket(this.wss); //新建一个webstock对象
+							this.websock.onopen = this.websocketonopen;
+							this.websock.onmessage = this.websocketonmessage;
+							this.websock.onerror = this.websocketonerror;
+							this.websock.onclose = this.websocketclose;
+						} else {
+							alert("当前浏览器 Not support websocket");
+						}
+					},
+					websocketonopen() {
+						var that = this;
+						// console.log("---连接建立成功---");
+						this.getmap();
+						timemap = setInterval(function() {
+							if (that.ismap) {
+								clearInterval(timemap);
+								that.pullvacancy();
+								that.pulllocation();
+							}
+						}, 1000)
+
+					},
+					websocketonerror() {
+						//连接建立失败重连
+						this.initWebSocket();
+					},
+					websocketonmessage(e) {
+						//数据接收
+						var that = this;
+						let data = JSON.parse(e.data);
+						console.log(data);
+						if (data.command == "4006") {
+							that.mapdata = data.data.data;
+							if (data.data.data) {
+								that.intomap();
+							} else {
+								that.$toast.fail("此车库暂无地图");
+								return;
+							}
+
+						}
+						if (data.command == "4005") {
+							that.freedata = data.data.data;
+							that.addcar();
+							// 每10秒刷新一次空闲车位
+							// setTimeout(function(){
+							// 	that.pullvacancy();
+							// },10000)
+						}
+						if (data.command == "4002") {
+							console.log(data.data.data);
+							if (data.data.data) {
+								var locationdata = data.data.data;
+								startPoint = [Number(locationdata.px), Number(locationdata.pz)];
+								startfloor = locationdata.floor;
+								currentFloor = map.data.getFloor(startfloor);
+								that.newestloction();
+								// 每1秒刷新一次位置
+								// setTimeout(function(){
+								// 	that.pulllocation();
+								// },1000)
+							}
+						}
+					},
+					websocketsend(Data) {
+						//数据发送
+						this.websock.send(Data);
+					},
+					websocketclose(e) {
+						//关闭
+						console.log("断开连接", e);
+					},
+					//获取地图
+					getmap() {
+						var datas = {
+							"module": "map",
+							"version": "001",
+							"command": "4006",
+							"data": {
+								"pid": this.parkId
+							}
+						};
+						this.websocketsend(JSON.stringify(datas));
+					},
+					//实时地图空位
+					pullvacancy() {
+						var datas = {
+							"module": "map",
+							"version": "001",
+							"command": "4005",
+							"data": {
+								"pid": this.parkId,
+								"hour": this.max
+							}
+						};
+						this.websocketsend(JSON.stringify(datas));
+					},
+					//实时位置
+					pulllocation() {
+						var that = this;
+						var datas = {
+							"module": "map",
+							"version": "001",
+							"command": "4002",
+							"data": {
+								"openId": that.uid
+							}
+						};
+						this.websocketsend(JSON.stringify(datas));
+					},
+					//初始化地图
+					intomap() {
+						var that = this;
+						var container = document.getElementById("map");
+						map = new AirocovMap.Map({
+							container: container,
+							mapUrl: './acmap/bgyjy.acmap',
+							themeUrl: './theme/theme.json',
+							showAllFloor: false,
+							defaultFloorIndex: 4,
+							pointScale: 2,
+							maxPolarAngle: 90,
+							zoom: 0.4,
+							theta: 180,
+							theta3D: 90,
+							key: that.mapdata.key,
+							bgColor: "#C3DFFD",
+							onReady: function() {
+								new AirocovMap.controls.ModeSwitch(map, {
+									width: '10px',
+									left: '10px',
+									bottom: '80px'
+								});
+								//楼层切换控件
+								floorSwitch = new AirocovMap.controls.FloorSwitch(map, {
+									left: '10px',
+									bottom: '145px',
+									type: 1
+								});
+								//比例尺控件
+								new AirocovMap.controls.MapScale(map, {
+									right: "10px", //控件与容器左侧距离，或添加right属性，设置与容器右侧距离
+									top: "20px", //控件与容器底部距离，或添加top属性，设置与容器顶部距离
+									color: "red", // 线条颜色
+									linewidth: 3, // 线宽
+									linelong: 50, // 线长（像素）
+									fontSize: 12, // 文字大小
+									fontColor: "blcak" // 文字颜色
+								});
+								//B4-B3-B2弯道
+								map.addGLTFModel({
+									src: "./glb/弯道.glb",
+									callback: function(data) {
+										var model = data.scene;
+										model.scale.set(14, 23.8, 14)
+										model.position.x = 43.8
+										model.position.z = 15.6
+										model.position.y = 0
+										map.addToFloor({
+											object: model,
+											floorName: "B4",
+											layerName: "models"
+										})
+										map.addToFloor({
+											object: model.clone(),
+											floorName: "B3",
+											layerName: "models"
+										})
+									}
+								})
+								//B3-B2-B1弯道
+								map.addGLTFModel({
+									src: "./glb/弯道.glb",
+									callback: function(data) {
+										var model = data.scene;
+										model.scale.set(14, 23.8, 14)
+										model.position.x = 43.8
+										model.position.z = 15.6
+										model.position.y = 0
+										map.addToFloor({
+											object: model,
+											floorName: "B3",
+											layerName: "models"
+										})
+										map.addToFloor({
+											object: model.clone(),
+											floorName: "B2",
+											layerName: "models"
+										})
+									}
+								})
+								//B1-P1-P2坡道
+								map.addGLTFModel({
+									src: './glb/直坡.glb',
+									callback: function(data) {
+										var model = data.scene;
+										model.scale.set(2.05, 2.75, 3.3);
+										model.rotation.y -= Math.PI;
+										model.position.x = 41;
+										model.position.z = 92.5;
+										model.position.y = -0.65;
+										map.addToFloor({
+											object: model,
+											floorName: 'B1',
+											layerName: 'models',
+										});
+										var cloneModel = model.clone();
+										cloneModel.position.z -= 1.8;
+										cloneModel.position.x += 0.15;
+										cloneModel.scale.x = 2.15;
+										cloneModel.scale.z = 3.05;
+										map.addToFloor({
+											object: cloneModel,
+											floorName: 'P1',
+											layerName: 'models',
+										});
+									},
+								});
+								//地面-P1-B1坡道
+								map.addGLTFModel({
+									src: "./glb/双弯道.glb",
+									callback: function(data) {
+										var model = data.scene;
+										model.scale.set(2, 2.65, 2);
+										model.position.x = 20.6;
+										model.position.z = 45.2;
+										model.position.y = 1.52;
+										model.rotation.y = Math.PI / 2;
+										map.addToFloor({
+											object: model,
+											floorName: "P1",
+											layerName: "models"
+										})
+
+									}
+								})
+								//B2-B1坡道
+								map.addGLTFModel({
+									src: "./glb/直坡.glb",
+									callback: function(data) {
+										var model = data.scene;
+										model.scale.set(1.6, 2.76, 4.1);
+										model.position.x = -3.5;
+										model.position.z = 11.4;
+										model.position.y = -0.7;
+										model.rotation.y = -Math.PI / 2;
+										map.addToFloor({
+											object: model,
+											floorName: "B2",
+											layerName: "models"
+										})
+
+									}
+								});
+								//B3-B2坡道
+								map.addGLTFModel({
+									src: "./glb/直坡.glb",
+									callback: function(data) {
+										var model = data.scene;
+										model.scale.set(1.6, 2.76, 4.1);
+										model.position.x = -3.5;
+										model.position.z = 11.4;
+										model.position.y = -0.7;
+
+										model.rotation.y = -Math.PI / 2;
+
+										map.addToFloor({
+											object: model,
+											floorName: "B3",
+											layerName: "models"
+										})
+
+									}
+								});
+								//B4-B3坡道
+								map.addGLTFModel({
+									src: "./glb/直坡.glb",
+									callback: function(data) {
+										var model = data.scene;
+										model.scale.set(1.6, 2.76, 4.1);
+										model.position.x = -3.5;
+										model.position.z = 11.4;
+										model.position.y = -0.7;
+										model.rotation.y = -Math.PI / 2;
+										map.addToFloor({
+											object: model,
+											floorName: "B4",
+											layerName: "models"
+										})
+									}
+								});
+								floorP1 = map.data.getFloor(that.P1);
+								floorP2 = map.data.getFloor(that.P2);
+								floorB1 = map.data.getFloor(that.B1);
+								floorB2 = map.data.getFloor(that.B2);
+								floorB3 = map.data.getFloor(that.B3);
+								floorB4 = map.data.getFloor(that.B4);
+								floorArr = [floorP1, floorP2, floorB1, floorB2, floorB3, floorB4];
+								currentFloor = floorP1; //将P1初始为默认所在楼层
+								setTimeout(() => {
+									parkingSpaceAll = [];
+									var parkingSpaceP1 = floorP1.getLayer("nameGroup").children;
+									var parkingSpaceP2 = floorP2.getLayer("nameGroup").children;
+									var parkingSpaceB1 = floorB1.getLayer("nameGroup").children;
+									var parkingSpaceB2 = floorB2.getLayer("nameGroup").children;
+									var parkingSpaceB3 = floorB3.getLayer("nameGroup").children;
+									var parkingSpaceB4 = floorB4.getLayer("nameGroup").children;
+									parkingSpaceAll.push.apply(parkingSpaceAll, parkingSpaceP1);
+									parkingSpaceAll.push.apply(parkingSpaceAll, parkingSpaceP2);
+									parkingSpaceAll.push.apply(parkingSpaceAll, parkingSpaceB1);
+									parkingSpaceAll.push.apply(parkingSpaceAll, parkingSpaceB2);
+									parkingSpaceAll.push.apply(parkingSpaceAll, parkingSpaceB3);
+									parkingSpaceAll.push.apply(parkingSpaceAll, parkingSpaceB4);
+								}, 100)
+								// console.log(parkingSpaceAll)
+								//路径文件
+								$.ajax({
+									type: "get",
+									url: "./route/P1ljok.json",
+									async: true,
+									success: function(data) {
+										paths.P1 = data;
+									}
+								});
+								//路径文件
+								$.ajax({
+									type: "get",
+									url: "./route/P2ljok.json",
+									async: true,
+									success: function(data) {
+										paths.P2 = data;
+									}
+								});
+								//路径文件
+								$.ajax({
+									type: "get",
+									url: "./route/B1ljok.json",
+									async: true,
+									success: function(data) {
+										paths.B1 = data;
+									}
+								});
+								//路径文件
+								$.ajax({
+									type: "get",
+									url: "./route/B2ljok.json",
+									async: true,
+									success: function(data) {
+										paths.B2 = data;
+									}
+								});
+								//路径文件
+								$.ajax({
+									type: "get",
+									url: "./route/B3ljok.json",
+									async: true,
+									success: function(data) {
+										paths.B3 = data;
+									}
+								});
+								//路径文件
+								$.ajax({
+									type: "get",
+									url: "./route/B4ljok.json",
+									async: true,
+									success: function(data) {
+										paths.B4 = data;
+									}
+								});
+								polyline = AirocovMap.covers.paths;
+
+							}
+						})
+						//地图加载完执行
+						map.event.on("loaded", function() {
+							that.ismap = true;
+						});
+						//点击地图事件
+						map.event.on('click', function(e) {
+							console.log("点击事件：", e);
+							that.clearMarker();
+							endPoint = [Number(e.position.x), Number(e.position.z)]; //获取终点坐标
+							endfloor = e.target.getParentFloor().name; //获取终点楼层
+							targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+							that.generatePath(); //规划路线
+						});
+					},
+					//实时刷新最新坐标
+					newestloction() {
+						var that = this;
+						if (that.isfloorSwitch) {
+							var showFloori = 0;
+							for (var i = 0; i < floorslist.length; i++) {
+								if (currentFloor.name == floorslist[i]) {
+									showFloori = i;
+									break;
+								}
+							}
+							that.isfloorSwitch = false;
+							floorSwitch.domControl.showFloor.children[showFloori].click();
+						}
+						if (endfloor === "") {
+							that.clearMarker();
+							new AirocovMap.covers.ImageMarker({
+								imgSrc: "./img/bubble.png",
+								size: 2,
+								position: {
+									x: startPoint[0],
+									y: 1,
+									z: startPoint[1]
+								},
+								center: [0.5, 0],
+								callback: function(startMark) {
+									map.addToFloor({
+										object: startMark,
+										floorName: currentFloor.name,
+										layerName: "location"
+									});
+								}
+							});
+						} else {
+							if (that.searchinput === "") {
+								that.clearMarker();
+								that.generatePath();
+							} else {
+								that.onSearch();
+							}
+
+						}
+					},
+					//放置小车
+					addcar() {
+						var that = this;
+						var freedata = that.freedata;
+						floorslist.forEach(function(floors) {
+							var roomGroup = map.data.getFloor(floors).getLayer('roomGroup');
+							var room = roomGroup.children;
+							for (var i = 0; i < room.length; i++) {
+								if (room[i].info.type.sType !== 1002) continue;
+								freedata.forEach(function(free) {
+									if (free.serial === room[i].name && room[i].parent.parent.name == free.floor) {
+										room[i].material.color.set('#237804');
+									}
+								});
+							}
+						});
+					},
+					//展示搜索条件
+					onSeachMore() {
+						this.seachShow = true;
+					},
+					//传入坐标导航
+					onSearch() {
+						var that = this;
+						if (parkingSpaceAll.length == 0) {
+							that.$toast.fail("车位数据加载中");
+							return;
+						}
+						var target = parkingSpaceAll.find(item => item.name == that.searchinput);
+						if (!target) {
+							that.$toast.fail("未找到指定停车位");
+							return;
+						} else {
+							that.seachShow = false;
+							that.clearMarker();
+							endPoint = [Number(target.position.x), Number(target.position.z)]; //获取终点坐标
+							endfloor = target.parent.parent.name; //获取终点楼层
+							targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+							that.generatePath();
+						}
+					},
+					//出口
+					exitClick() {
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [42.67708003975453, 89.738410206842];
+						endfloor = that.P2;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//P2电梯
+					p2LiftClick: function() {
+						var that = this;
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [34.72, 57.33];
+						endfloor = that.P2;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//P1电梯
+					p1LiftClick: function() {
+						var that = this;
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [34.7, 57.48];
+						endfloor = that.P1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					b1LiftClick: function() {
+						var that = this;
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [34.72, 57.33]; // 31.25,110.15
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					b2LiftClick: function() {
+						var that = this;
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-7.783774887149967, -26.237034237582918]; // 31.25,110.15
+						endfloor = that.B2;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					b3LiftClick: function() {
+						var that = this;
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-7.783774887149967, -26.237034237582918]; // 31.25,110.15
+						endfloor = that.B3;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					b4LiftClick: function() {
+						var that = this;
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-7.783774887149967, -26.237034237582918]; // 31.25,110.15
+						endfloor = that.B4;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//规划路线
+					generatePath() {
+						var that = this;
+						that.searchinput = ""; //清楚searchinput
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						if (endPoint.length === 0) {
+							that.$toast.fail("未获取到终点位置");
+							return;
+						}
+						//起点标注
+						new AirocovMap.covers.ImageMarker({
+							imgSrc: "./img/bubble.png",
+							size: 2,
+							position: {
+								x: startPoint[0],
+								y: 1,
+								z: startPoint[1]
+							},
+							center: [0.5, 0],
+							callback: function(startMark) {
+								map.addToFloor({
+									object: startMark,
+									floorName: currentFloor.name,
+									layerName: "location"
+								});
+							}
+						});
+						//终点标注
+						new AirocovMap.covers.ImageMarker({
+							imgSrc: "./img/end.png",
+							size: 2,
+							position: {
+								x: endPoint[0],
+								y: 1,
+								z: endPoint[1]
+							},
+							center: [0.5, 0],
+							callback: function(endMark) {
+								map.addToFloor({
+									object: endMark,
+									floorName: targetFloor.name,
+									layerName: "destination"
+								});
+							}
+						});
+						//判断是否在同一楼层
+						if (currentFloor.name == targetFloor.name) {
+							//获取路线
+							var pathData = that.getPaths(currentFloor.name);
+							var routePoints = [];
+							var points = polyline.drawRoad({
+								points: [startPoint, endPoint],
+								getPathOnly: true
+							}, pathData);
+							for (var i = 0, len = points.length; i < len; i++) {
+								routePoints.push([points[i][0], 1, points[i][1]]);
+							}
+							var road = polyline.drawTube({
+								points: routePoints,
+								radius: 0.8,
+								imgUrl: "./img/arrow.png"
+							});
+							if (!road) {
+								that.$toast.fail("路径规划失败");
+								return;
+							}
+							// 加入地图
+							map.addToFloor({
+								object: road,
+								floorName: currentFloor.name,
+								layerName: "pathGroup"
+							});
+							//路径动画
+							if (road.material.map) {
+								road.material.map.offset.x = 1;
+								TweenMax.to(road.material.map.offset, 1, {
+									x: 0,
+									ease: Power0.easeNone,
+									repeat: -1,
+									onStart: function() {
+										if (road.material.map.offset.x == 0) {
+											road.material.map.offset.x = 1
+										}
+									}
+								})
+							}
+						} else {
+							that.selectRoad();
+						}
+					},
+
+					//没在同一楼层方法选择路线
+					selectRoad() {
+						var that = this;
+						var name = currentFloor.name + targetFloor.name;
+						switch (name) {
+							case 'P2' + 'P1':
+								that.drawP2ToP1();
+								break;
+							case 'P2' + 'B1':
+								that.drawP2ToB1();
+								break;
+							case 'P2' + 'B2':
+								that.drawP2ToB2();
+								break;
+							case 'P2' + 'B3':
+								that.drawP2ToB3();
+								break;
+							case 'P2' + 'B4':
+								that.drawP2ToB4();
+								break;
+							case 'P1' + 'P2':
+								that.drawP1ToP2();
+								break;
+							case 'P1' + 'B1':
+								that.drawP1ToB1();
+								break;
+							case 'P1' + 'B2':
+								that.drawP1ToB2();
+								break;
+							case 'P1' + 'B3':
+								that.drawP1ToB3();
+								break;
+							case 'P1' + 'B4':
+								that.drawP1ToB4();
+								break;
+							case 'B1' + 'P2':
+								that.drawB1ToP2();
+								break;
+							case 'B1' + 'P1':
+								that.drawB1ToP1();
+								break;
+							case 'B1' + 'B2':
+								that.drawB1ToB2();
+								break;
+							case 'B1' + 'B3':
+								that.drawB1ToB3();
+								break;
+							case 'B1' + 'B4':
+								that.drawB1ToB4();
+								break;
+							case 'B2' + 'P2':
+								that.drawB2ToP2();
+								break;
+							case 'B2' + 'P1':
+								that.drawB2ToP1();
+								break;
+							case 'B2' + 'B1':
+								that.drawB2ToB1();
+								break;
+							case 'B2' + 'B3':
+								that.drawB2ToB3();
+								break;
+							case 'B2' + 'B4':
+								that.drawB2ToB4();
+								break;
+							case 'B3' + 'P2':
+								that.drawB3ToP2();
+								break;
+							case 'B3' + 'P1':
+								that.drawB3ToP1();
+								break;
+							case 'B3' + 'B1':
+								that.drawB3ToB1();
+								break;
+							case 'B3' + 'B2':
+								that.drawB3ToB2();
+								break;
+							case 'B3' + 'B4':
+								that.drawB3ToB4();
+								break;
+							case 'B4' + 'P2':
+								that.drawB4ToP2();
+								break;
+							case 'B4' + 'P1':
+								that.drawB4ToP1();
+								break;
+							case 'B4' + 'B1':
+								that.drawB4ToB1();
+								break;
+							case 'B4' + 'B2':
+								that.drawB4ToB2();
+								break;
+							case 'B4' + 'B3':
+								that.drawB4ToB3();
+								break;
+							default:
+								that.$toast.fail("路径规划失败");
+								break;
+						}
+					},
+					//P1到P2
+					drawP1ToP2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V1],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [V6, endPoint],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P1到B1
+					drawP1ToB1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B1); //获取B1路径数据
+						polyline = AirocovMap.covers.paths;
+						var points = polyline.drawRoad({
+							points: [V1, endPoint],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P1到B2
+					drawP1ToB2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB1DOWNB1();
+						//B2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B2); //获取B1路径数据
+						polyline = AirocovMap.covers.paths;
+						var points = polyline.drawRoad({
+							points: [V4, endPoint],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P1到B3
+					drawP1ToB3: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB1DOWNB1();
+						that.drawB2DOWNB2();
+						//B2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B3); //获取B1路径数据
+						polyline = AirocovMap.covers.paths;
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P1到B4
+					drawP1ToB4: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB1DOWNB1();
+						that.drawB2DOWNB2();
+						that.drawB3DOWNB3();
+						//B2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B4); //获取B1路径数据
+						polyline = AirocovMap.covers.paths;
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P2到P1
+					drawP2ToP1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V1, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P2到B1
+					drawP2ToB1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						that.drawP1DOWNP1();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V1, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P2到B2
+					drawP2ToB2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawP1DOWNP1();
+						that.drawB1DOWNB1();
+						//B2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B2); //获取B1路径数据
+						polyline = AirocovMap.covers.paths;
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P2到B3
+					drawP2ToB3: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawP1DOWNP1();
+						that.drawB1DOWNB1();
+						that.drawB2DOWNB2();
+						//B2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B3); //获取B1路径数据
+						polyline = AirocovMap.covers.paths;
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P2到B4
+					drawP2ToB4: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawP1DOWNP1();
+						that.drawB1DOWNB1();
+						that.drawB2DOWNB2();
+						that.drawB3DOWNB3();
+						//B2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B4); //获取B1路径数据
+						polyline = AirocovMap.covers.paths;
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B1到P2
+					drawB1ToP2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V1],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						that.drawP1UPP1();
+						routePoints = [];
+						var pathData = that.getPaths(that.P2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B1到P1
+					drawB1ToP1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V1],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B1到B2
+					drawB1ToB2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B1到B3
+					drawB1ToB3: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						that.drawB2DOWNB2();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B3); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B1到B4
+					drawB1ToB4: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						that.drawB2DOWNB2();
+						that.drawB3DOWNB3();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B4); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B2到P2
+					drawB2ToP2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB1UPB1();
+						that.drawP1UPP1();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B2到P1
+					drawB2ToP1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB1UPB1();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B2到B1
+					drawB2ToB1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V3, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B2到B3
+					drawB2ToB3: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B3); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B2到B4
+					drawB2ToB4: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						that.drawB3DOWNB3();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B4); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B3到P2
+					drawB3ToP2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B3); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB2UPB2();
+						that.drawB1UPB1();
+						that.drawP1UPP1();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B3到P1
+					drawB3ToP1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B3); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB2UPB2();
+						that.drawB1UPB1();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B3到B1
+					drawB3ToB1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B3); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						that.drawB2UPB2();
+						routePoints = [];
+						var pathData = that.getPaths(that.B1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V3, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B3到B2
+					drawB3ToB2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B3); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V3, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B3到B4
+					drawB3ToB4: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B3); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B4); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V4, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B4到P2
+					drawB4ToP2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B4); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB3UPB3();
+						that.drawB2UPB2();
+						that.drawB1UPB1();
+						that.drawP1UPP1();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B4到P1
+					drawB4ToP1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B4); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//B1层路径规划
+						that.drawB3UPB3();
+						that.drawB2UPB2();
+						that.drawB1UPB1();
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.P1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V6, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B4到B1
+					drawB4ToB1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B4); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						that.drawB3UPB3();
+						that.drawB2UPB2();
+						routePoints = [];
+						var pathData = that.getPaths(that.B1); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V3, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B4到B2
+					drawB4ToB2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B4); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						that.drawB3UPB3();
+						routePoints = [];
+						var pathData = that.getPaths(that.B2); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V3, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B4到B3
+					drawB4ToB3: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B4); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [startPoint, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B4层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B4,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+						//p2层路径规划
+						routePoints = [];
+						var pathData = that.getPaths(that.B3); //获取P1路径数据
+						var points = polyline.drawRoad({
+							points: [
+								V3, endPoint
+							],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P1到P1 向上
+					drawP1UPP1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V6, V1],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//P1到P1 向下
+					drawP1DOWNP1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V1, V6],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B1到B1 向上
+					drawB1UPB1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V3, V1],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B1到B1 向下
+					drawB1DOWNB1: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B1); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V1, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B1层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B1,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B2到B2 向上
+					drawB2UPB2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V3, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B2到B2 向下
+					drawB2DOWNB2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V4, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B3到B3 向上
+					drawB3UPB3: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B3); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V3, V5],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//B3到B3 向下
+					drawB3DOWNB3: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.B3); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V4, V2],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("B3层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.B3,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
+					//清楚地图上所有标点与路线
+					clearMarker() {
+						for (i = 0, len = floorArr.length; i < len; i++) {
+							floorArr[i].clearLayer("location"); //清除地图上起点标记
+							floorArr[i].clearLayer("destination"); //清除地图上终点标记
+							floorArr[i].clearLayer("pathGroup"); //清除地图上已有路径
+						}
+					},
+					//获取生成的所有车库路径
+					getPaths(name) {
+						switch (name) {
+							case 'P1':
+								return paths.P1;
+							case 'P2':
+								return paths.P2;
+							case 'B1':
+								return paths.B1;
+							case 'B2':
+								return paths.B2;
+							case 'B3':
+								return paths.B3;
+							case 'B4':
+								return paths.B4;
+							default:
+								this.$toast.fail("路径规划失败");
+								break;
+						}
+					},
+					//获取url参数
+					getUrlParam(url, name) {
+						if (!name) return;
+						var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i'),
+							r = url.substr(1).match(reg);
+						if (r != null) {
+							return (r[2]);
+						} else {
+							return null;
+						}
+					}
+				},
+				created() {
+					this.parkId = this.getUrlParam(location.search, "pid") ? this.getUrlParam(location.search, "pid") :
+						''; //640943469698744320
+					endfloor = this.getUrlParam(location.search, "stopfloor") ? this.getUrlParam(location.search, "stopfloor") : ''; //结束楼层
+					this.searchinput = this.getUrlParam(location.search, "spacenumber") ? this.getUrlParam(location.search,
+						"spacenumber") : ''; //车位
+					this.uid = this.getUrlParam(location.search, "uid") ? this.getUrlParam(location.search, "uid") :
+						'oV8hV4143ABNXKSHvN_OvZKXHXWs'; //用户uid
+					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 1; //空闲车位小时
+					this.initWebSocket();
+				}
+			})
+		</script>
+	</body>
+
+</html>

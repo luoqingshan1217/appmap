@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+	<link>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>嘿好停-东方巴黎地图导航</title>
+	<link rel="stylesheet" href="./css/vant.css" />
+	<link href="./css/main.css" rel="stylesheet" />
+	<body>
+		<div id="app">
+			<div id="map"></div>
+			<div style="position: absolute;left:10px;top:20px;">
+				<input class="btn-default" style="height: 16px; width: 120px; vertical-align: middle; font-size: 12px;" type="text"
+				 v-model="searchinput" placeholder="请输入停车位" />
+				<van-button type="info" icon="search" size="mini" @click="onSearch"></van-button>
+				<van-button type="info" icon="wap-nav" size="mini" @click="onSeachMore"></van-button>
+				<van-button type="info" icon="location" size="mini" @click=""></van-button>
+				<br />
+				<van-popup v-model="seachShow" position="top">
+					<van-row>
+						<v-col span="24">
+							<van-cell title="停车场查询" icon="location" />
+						</v-col>
+					</van-row>
+					<van-row>
+						<van-col span="24">
+							<van-search v-model="searchinput" placeholder="车位" show-action use-action-slot shape="round" bind:clear="clearSearch">
+								<div slot="action" @click="onSearch">搜索</div>
+							</van-search>
+						</van-col>
+					</van-row>
+					<van-row>
+						<v-col span="24">
+							<van-cell title="电梯位置" icon="location" />
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick1A">1-A电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick1B">1-B电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick1C">商业街电梯</van-button>
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick2A">2-A电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick2B">2-B电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick3A">3-A电梯</van-button>
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick3B">3-B电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick4A">4-A电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick4B">4-B电梯</van-button>
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick5A">5-A电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick5B">5-B电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick5C">5-C电梯</van-button>
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick6A">6-A电梯</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="LiftClick7A">7-A电梯</van-button>
+						</v-col>
+					</van-row>
+					<van-row>
+						<v-col span="24">
+							<van-cell title="出入口位置" icon="location" />
+						</v-col>
+					</van-row>
+					<van-row gutter="20" style="margin-left: 20px;">
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="exitClickA">北门出口</van-button>
+						</v-col>
+						<v-col span="8">
+							<van-button type="default" size="mini" class="van-button-custom" @click="exitClickB">南门出口</van-button>
+						</v-col>
+					</van-row>
+				</van-popup>
+			</div>
+		</div>
+		<script src="./js/vue.min.js"></script>
+		<script src="./js/jquery-3.4.1.min.js"></script>
+		<script src="./js/vant.min.js"></script>
+		<script src="./js/AirocovMap.js"></script>
+		<script src="./js/GLTFLoader.min.js"></script>
+		<script type="text/javascript">
+			var map = null; //地图模型
+			var floorB1; //B1楼层对象
+			var parkingSpaceAll = []; //所有车位
+			var floorArr = []; //所有楼层对象
+			var startPoint = [-18.69604437397812, -112.21597744815507]; //默认起始点
+			var startfloor; //我所在的楼层
+			var currentFloor; //我所在的楼层对象
+			var endfloor; //终点所在楼层
+			var targetFloor; //终点所在楼层对象
+			var endPoint = []; //结束点
+			var polyline; //路线
+			var floorslist = ['B1'];
+			var timemap;
+			var floorSwitch; //楼层切换控件
+			var paths = {
+				B1: '',
+			};
+			new Vue({
+				el: '#app',
+				data: function() {
+					return {
+						wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						map: null, //map对象
+						B1: 'B1',
+						searchinput: '', //搜索坐标
+						seachShow: false, //展示搜索条件
+						ismap: false, //map地图是否加载完毕
+						isfloorSwitch: true, //是否是首次获取定位
+					}
+				},
+				mounted() {
+					//创建websocket
+				},
+				methods: {
+					initWebSocket() {
+						//判断当前浏览器是否支持WebSocket
+						if ("WebSocket" in window) {
+							//初始化weosocket(必须)
+							this.websock = new WebSocket(this.wss); //新建一个webstock对象
+							this.websock.onopen = this.websocketonopen;
+							this.websock.onmessage = this.websocketonmessage;
+							this.websock.onerror = this.websocketonerror;
+							this.websock.onclose = this.websocketclose;
+						} else {
+							alert("当前浏览器 Not support websocket");
+						}
+					},
+					websocketonopen() {
+						var that = this;
+						// console.log("---连接建立成功---");
+						this.getmap();
+						timemap = setInterval(function() {
+							if (that.ismap) {
+								clearInterval(timemap);
+								that.pullvacancy();
+								that.pulllocation();
+							}
+						}, 1000)
+
+					},
+					websocketonerror() {
+						//连接建立失败重连
+						this.initWebSocket();
+					},
+					websocketonmessage(e) {
+						//数据接收
+						var that = this;
+						let data = JSON.parse(e.data);
+						console.log(data);
+						if (data.command == "4006") {
+							that.mapdata = data.data.data;
+							if (data.data.data) {
+								that.intomap();
+							} else {
+								that.$toast.fail("此车库暂无地图");
+								return;
+							}
+
+						}
+						if (data.command == "4005") {
+							that.freedata = data.data.data;
+							that.addcar();
+							// 每10秒刷新一次空闲车位
+							// setTimeout(function(){
+							// 	that.pullvacancy();
+							// },10000)
+						}
+						if (data.command == "4002") {
+							console.log(data.data.data);
+							if (data.data.data) {
+								var locationdata = data.data.data;
+								startPoint = [Number(locationdata.px), Number(locationdata.pz)];
+								startfloor = locationdata.floor;
+								currentFloor = map.data.getFloor(startfloor);
+								that.newestloction();
+								// 每1秒刷新一次位置
+								// setTimeout(function(){
+								// 	that.pulllocation();
+								// },1000)
+							}
+						}
+					},
+					websocketsend(Data) {
+						//数据发送
+						this.websock.send(Data);
+					},
+					websocketclose(e) {
+						//关闭
+						console.log("断开连接", e);
+					},
+					//获取地图
+					getmap() {
+						var datas = {
+							"module": "map",
+							"version": "001",
+							"command": "4006",
+							"data": {
+								"pid": this.parkId
+							}
+						};
+						this.websocketsend(JSON.stringify(datas));
+					},
+					//实时地图空位
+					pullvacancy() {
+						var datas = {
+							"module": "map",
+							"version": "001",
+							"command": "4005",
+							"data": {
+								"pid": this.parkId,
+								"hour": this.max
+							}
+						};
+						this.websocketsend(JSON.stringify(datas));
+					},
+					//实时位置
+					pulllocation() {
+						var that = this;
+						var datas = {
+							"module": "map",
+							"version": "001",
+							"command": "4002",
+							"data": {
+								"openId": that.uid
+							}
+						};
+						this.websocketsend(JSON.stringify(datas));
+					},
+					//初始化地图
+					intomap() {
+						var that = this;
+						var container = document.getElementById("map");
+						map = new AirocovMap.Map({
+							container: container,
+							mapUrl: './acmap/dfblxq.acmap',
+							themeUrl: './theme/theme.json',
+							showAllFloor: false,
+							defaultFloorIndex: 0,
+							pointScale: 2,
+							maxPolarAngle: 90,
+							zoom: 0.9,
+							theta: 180,
+							theta3D: 180,
+							key: that.mapdata.key,
+							bgColor: "#C3DFFD",
+							onReady: function() {
+								new AirocovMap.controls.ModeSwitch(map, {
+									width: '10px',
+									left: '10px',
+									bottom: '80px'
+								});
+								//楼层切换控件
+								floorSwitch = new AirocovMap.controls.FloorSwitch(map, {
+									left: '10px',
+									bottom: '145px',
+									type: 1
+								});
+								//比例尺控件
+								new AirocovMap.controls.MapScale(map, {
+									right: "10px", //控件与容器左侧距离，或添加right属性，设置与容器右侧距离
+									top: "20px", //控件与容器底部距离，或添加top属性，设置与容器顶部距离
+									color: "red", // 线条颜色
+									linewidth: 3, // 线宽
+									linelong: 50, // 线长（像素）
+									fontSize: 12, // 文字大小
+									fontColor: "blcak" // 文字颜色
+								});
+								floorB1 = map.data.getFloor(that.B1);
+								floorArr = [floorB1];
+								currentFloor = floorB1; //将P1初始为默认所在楼层
+								setTimeout(() => {
+									parkingSpaceAll = [];
+									var parkingSpaceB1 = floorB1.getLayer("nameGroup").children;
+									parkingSpaceAll.push.apply(parkingSpaceAll, parkingSpaceB1);
+								}, 100)
+								//路径文件
+								$.ajax({
+									type: "get",
+									url: "./route/dfblxq.json",
+									async: true,
+									success: function(data) {
+										paths.B1 = data;
+									}
+								});
+								polyline = AirocovMap.covers.paths;
+
+							}
+						})
+						//地图加载完执行
+						map.event.on("loaded", function() {
+							that.ismap = true;
+						});
+						//点击地图事件
+						map.event.on('click', function(e) {
+							console.log("点击事件：", e);
+							that.clearMarker();
+							endPoint = [Number(e.position.x), Number(e.position.z)]; //获取终点坐标
+							endfloor = e.target.getParentFloor().name; //获取终点楼层
+							targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+							that.generatePath(); //规划路线
+						});
+					},
+					//实时刷新最新坐标
+					newestloction() {
+						var that = this;
+						if (that.isfloorSwitch) {
+							var showFloori = 0;
+							for (var i = 0; i < floorslist.length; i++) {
+								if (currentFloor.name == floorslist[i]) {
+									showFloori = i;
+									break;
+								}
+							}
+							that.isfloorSwitch = false;
+							floorSwitch.domControl.showFloor.children[showFloori].click();
+						}
+						if (endfloor === "") {
+							that.clearMarker();
+							new AirocovMap.covers.ImageMarker({
+								imgSrc: "./img/bubble.png",
+								size: 2,
+								position: {
+									x: startPoint[0],
+									y: 1,
+									z: startPoint[1]
+								},
+								center: [0.5, 0],
+								callback: function(startMark) {
+									map.addToFloor({
+										object: startMark,
+										floorName: currentFloor.name,
+										layerName: "location"
+									});
+								}
+							});
+						} else {
+							if (that.searchinput === "") {
+								that.clearMarker();
+								that.generatePath();
+							} else {
+								that.onSearch();
+							}
+
+						}
+					},
+					//放置小车
+					addcar() {
+						var that = this;
+						var freedata = that.freedata;
+						floorslist.forEach(function(floors) {
+							var roomGroup = map.data.getFloor(floors).getLayer('roomGroup');
+							var room = roomGroup.children;
+							for (var i = 0; i < room.length; i++) {
+								if (room[i].info.type.sType !== 1002) continue;
+								freedata.forEach(function(free) {
+									if (free.serial === room[i].name && room[i].parent.parent.name == free.floor) {
+										room[i].material.color.set('#237804');
+									}
+								});
+							}
+						});
+					},
+					//展示搜索条件
+					onSeachMore() {
+						this.seachShow = true;
+					},
+					//传入坐标导航
+					onSearch() {
+						var that = this;
+						if (parkingSpaceAll.length == 0) {
+							that.$toast.fail("车位数据加载中");
+							return;
+						}
+						var target = parkingSpaceAll.find(item => item.name == that.searchinput);
+						if (!target) {
+							that.$toast.fail("未找到指定停车位");
+							return;
+						} else {
+							that.seachShow = false;
+							that.clearMarker();
+							endPoint = [Number(target.position.x), Number(target.position.z)]; //获取终点坐标
+							endfloor = target.parent.parent.name; //获取终点楼层
+							targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+							that.generatePath();
+						}
+					},
+					//北门出口
+					exitClickA() {
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-17.022878446639893, -112.1079646366343];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//南门出口
+					exitClickB() {
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [29.938197634643675, 132.16565273793293];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//1-A电梯
+					LiftClick1A(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [19.43235573618595, -113.87680280261844];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//1-B电梯
+					LiftClick1B(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [5.220421109190138, -140.01315511362117];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//商业街电梯
+					LiftClick1C(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [3.1269239133272335, -123.71374744441195];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//2-A电梯
+					LiftClick2A(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [23.13432779150428, -60.82414340572484];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//2-B电梯
+					LiftClick2B(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-6.267758687583567, -59.64429600638494];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//3-A电梯
+					LiftClick3A(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [30.050612438464256, -0.4455099747015438];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//3-B电梯
+					LiftClick3B(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-12.568810637395629, 0.534451537049801];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//4-A电梯
+					LiftClick4A(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [29.12704113137896, 64.08514340543123];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//4-B电梯
+					LiftClick4B(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-5.9848145432257525, 62.43708415969452];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//5-A电梯
+					LiftClick5A(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [21.211622529489983, 117.32103666637563];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//5-B电梯
+					LiftClick5B(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-3.6377069573122203, 122.61815192744025];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//5-C电梯
+					LiftClick5C(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-38.889307108381686, 135.4574661884153];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//6-A电梯
+					LiftClick6A(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-79.80811125249853, 140.5316799304802];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//7-A电梯
+					LiftClick7A(){
+						var that = this;
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						that.seachShow = false;
+						that.clearMarker();
+						endPoint = [-123.9439399184332, 138.93819117301845];
+						endfloor = that.B1;
+						targetFloor = map.data.getFloor(endfloor); //获取终点楼层对象
+						that.generatePath();
+					},
+					//规划路线
+					generatePath() {
+						var that = this;
+						that.searchinput = ""; //清楚searchinput
+						if (startPoint.length === 0) {
+							that.$toast.fail("未获取到当前位置");
+							return;
+						}
+						if (endPoint.length === 0) {
+							that.$toast.fail("未获取到终点位置");
+							return;
+						}
+						//起点标注
+						new AirocovMap.covers.ImageMarker({
+							imgSrc: "./img/bubble.png",
+							size: 2,
+							position: {
+								x: startPoint[0],
+								y: 1,
+								z: startPoint[1]
+							},
+							center: [0.5, 0],
+							callback: function(startMark) {
+								map.addToFloor({
+									object: startMark,
+									floorName: currentFloor.name,
+									layerName: "location"
+								});
+							}
+						});
+						//终点标注
+						new AirocovMap.covers.ImageMarker({
+							imgSrc: "./img/end.png",
+							size: 2,
+							position: {
+								x: endPoint[0],
+								y: 1,
+								z: endPoint[1]
+							},
+							center: [0.5, 0],
+							callback: function(endMark) {
+								map.addToFloor({
+									object: endMark,
+									floorName: targetFloor.name,
+									layerName: "destination"
+								});
+							}
+						});
+						//判断是否在同一楼层
+						if (currentFloor.name == targetFloor.name) {
+							//获取路线
+							var pathData = that.getPaths(currentFloor.name);
+							var routePoints = [];
+							var points = polyline.drawRoad({
+								points: [startPoint, endPoint],
+								getPathOnly: true
+							}, pathData);
+							for (var i = 0, len = points.length; i < len; i++) {
+								routePoints.push([points[i][0], 1, points[i][1]]);
+							}
+							var road = polyline.drawTube({
+								points: routePoints,
+								radius: 0.8,
+								imgUrl: "./img/arrow.png"
+							});
+							if (!road) {
+								that.$toast.fail("路径规划失败");
+								return;
+							}
+							// 加入地图
+							map.addToFloor({
+								object: road,
+								floorName: currentFloor.name,
+								layerName: "pathGroup"
+							});
+							//路径动画
+							if (road.material.map) {
+								road.material.map.offset.x = 1;
+								TweenMax.to(road.material.map.offset, 1, {
+									x: 0,
+									ease: Power0.easeNone,
+									repeat: -1,
+									onStart: function() {
+										if (road.material.map.offset.x == 0) {
+											road.material.map.offset.x = 1
+										}
+									}
+								})
+							}
+						}
+					},
+					//清楚地图上所有标点与路线
+					clearMarker() {
+						for (i = 0, len = floorArr.length; i < len; i++) {
+							floorArr[i].clearLayer("location"); //清除地图上起点标记
+							floorArr[i].clearLayer("destination"); //清除地图上终点标记
+							floorArr[i].clearLayer("pathGroup"); //清除地图上已有路径
+						}
+					},
+					//获取生成的所有车库路径
+					getPaths(name) {
+						switch (name) {
+							case 'B1':
+								return paths.B1;
+							default:
+								this.$toast.fail("路径规划失败");
+								break;
+						}
+					},
+					//获取url参数
+					getUrlParam(url, name) {
+						if (!name) return;
+						var reg = new RegExp('(^|&)' + name + '=([^&]*)(&|$)', 'i'),
+							r = url.substr(1).match(reg);
+						if (r != null) {
+							return (r[2]);
+						} else {
+							return null;
+						}
+					}
+				},
+				created() {
+					this.parkId = this.getUrlParam(location.search, "pid") ? this.getUrlParam(location.search, "pid") :
+						''; //694932188327575553
+					endfloor = this.getUrlParam(location.search, "stopfloor") ? this.getUrlParam(location.search, "stopfloor") : ''; //结束楼层
+					this.searchinput = this.getUrlParam(location.search, "spacenumber") ? this.getUrlParam(location.search,
+						"spacenumber") : ''; //车位
+					this.uid = this.getUrlParam(location.search, "uid") ? this.getUrlParam(location.search, "uid") :
+						''; //用户uid
+					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 1; //空闲车位小时
+					this.initWebSocket();
+				}
+			})
+		</script>
+	</body>
+
+</html>
