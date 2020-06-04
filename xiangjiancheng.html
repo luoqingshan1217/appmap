@@ -369,6 +369,11 @@
 						//地图加载完执行
 						map.event.on("loaded", function() {
 							that.ismap = true;
+							setTimeout(function(){
+								if (that.searchinput != "null" && that.searchinput != "") {
+									that.onSearch();
+								}
+							},500)
 						});
 						//点击地图事件
 						map.event.on('click', function(e) {

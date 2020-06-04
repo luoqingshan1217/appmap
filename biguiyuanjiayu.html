@@ -510,6 +510,11 @@
 						//地图加载完执行
 						map.event.on("loaded", function() {
 							that.ismap = true;
+							setTimeout(function(){
+								if (that.searchinput != "null" && that.searchinput != "") {
+									that.onSearch();
+								}
+							},500)
 						});
 						//点击地图事件
 						map.event.on('click', function(e) {
@@ -3833,7 +3838,7 @@
 					this.searchinput = this.getUrlParam(location.search, "spacenumber") ? this.getUrlParam(location.search,
 						"spacenumber") : ''; //车位
 					this.uid = this.getUrlParam(location.search, "uid") ? this.getUrlParam(location.search, "uid") :
-						'oV8hV4143ABNXKSHvN_OvZKXHXWs'; //用户uid
+						''; //用户uid
 					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 1; //空闲车位小时
 					this.initWebSocket();
 				}
