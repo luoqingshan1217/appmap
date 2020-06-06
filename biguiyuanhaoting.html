@@ -150,9 +150,9 @@
 							that.freedata = data.data.data;
 							that.addcar();
 							// 每10秒刷新一次空闲车位
-							// setTimeout(function(){
-							// 	that.pullvacancy();
-							// },10000)
+							setTimeout(function(){
+								that.pullvacancy();
+							},10000)
 						}
 						if (data.command == "4002") {
 							console.log(data.data.data);
@@ -163,9 +163,9 @@
 								currentFloor = map.data.getFloor(startfloor);
 								that.newestloction();
 								// 每1秒刷新一次位置
-								// setTimeout(function(){
-								// 	that.pulllocation();
-								// },1000)
+								setTimeout(function(){
+									that.pulllocation();
+								},1000)
 							}
 						}
 					},

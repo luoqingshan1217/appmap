@@ -95,6 +95,7 @@
 			var V1 = [43.385186453376804, 89.25231642020977]; //P1P2B1入口
 			var V2 = [39.09048630862461, 8.101648669363156]; //B1B2B3B4
 			var V3 = [-33.30681145308831, 11.420178632426444]; //B1B2B3
+			// var V3 = [-33.65610086921582, 15.785821804400094]; //B1B2B3
 			var V4 = [36.32086127843023, 22.6212747704772]; //P1B1B2B3B4
 			var V5 = [-1.5879039630907386, 11.350095397654295]; //B2B3
 			var V6 = [34.682979120412355, 69.2946560575174]; //P1P2出口
@@ -179,9 +180,9 @@
 							that.freedata = data.data.data;
 							that.addcar();
 							// 每10秒刷新一次空闲车位
-							// setTimeout(function(){
-							// 	that.pullvacancy();
-							// },10000)
+							setTimeout(function(){
+								that.pullvacancy();
+							},10000)
 						}
 						if (data.command == "4002") {
 							console.log(data.data.data);
@@ -192,9 +193,9 @@
 								currentFloor = map.data.getFloor(startfloor);
 								that.newestloction();
 								// 每1秒刷新一次位置
-								// setTimeout(function(){
-								// 	that.pulllocation();
-								// },1000)
+								setTimeout(function(){
+									that.pulllocation();
+								},1000)
 							}
 						}
 					},
@@ -284,26 +285,21 @@
 									fontColor: "blcak" // 文字颜色
 								});
 								//B4-B3-B2弯道
-								map.addGLTFModel({
-									src: "./glb/弯道.glb",
-									callback: function(data) {
-										var model = data.scene;
-										model.scale.set(14, 23.8, 14)
-										model.position.x = 43.8
-										model.position.z = 15.6
-										model.position.y = 0
-										map.addToFloor({
-											object: model,
-											floorName: "B4",
-											layerName: "models"
-										})
-										map.addToFloor({
-											object: model.clone(),
-											floorName: "B3",
-											layerName: "models"
-										})
-									}
-								})
+								// map.addGLTFModel({
+								// 	src: "./glb/弯道.glb",
+								// 	callback: function(data) {
+								// 		var model = data.scene;
+								// 		model.scale.set(14, 23.8, 14)
+								// 		model.position.x = 43.8
+								// 		model.position.z = 15.6
+								// 		model.position.y = 0
+								// 		map.addToFloor({
+								// 			object: model.clone(),
+								// 			floorName: "B3",
+								// 			layerName: "models"
+								// 		})
+								// 	}
+								// })
 								//B3-B2-B1弯道
 								map.addGLTFModel({
 									src: "./glb/弯道.glb",
@@ -321,6 +317,11 @@
 										map.addToFloor({
 											object: model.clone(),
 											floorName: "B2",
+											layerName: "models"
+										})
+										map.addToFloor({
+											object: model.clone(),
+											floorName: "B1",
 											layerName: "models"
 										})
 									}
@@ -479,7 +480,7 @@
 								//路径文件
 								$.ajax({
 									type: "get",
-									url: "./route/B2ljok.json",
+									url: "./route/B1ljok.json",
 									async: true,
 									success: function(data) {
 										paths.B2 = data;
@@ -488,7 +489,7 @@
 								//路径文件
 								$.ajax({
 									type: "get",
-									url: "./route/B3ljok.json",
+									url: "./route/B1ljok.json",
 									async: true,
 									success: function(data) {
 										paths.B3 = data;
@@ -497,7 +498,7 @@
 								//路径文件
 								$.ajax({
 									type: "get",
-									url: "./route/B4ljok.json",
+									url: "./route/B1ljok.json",
 									async: true,
 									success: function(data) {
 										paths.B4 = data;
@@ -963,7 +964,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P1); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -998,12 +999,13 @@
 								}
 							})
 						}
+						that.drawP2UPP2();
 						//B1层路径规划
 						routePoints = [];
 						var pathData = that.getPaths(that.B1); //获取B1路径数据
 						polyline = AirocovMap.covers.paths;
 						var points = polyline.drawRoad({
-							points: [V1, endPoint],
+							points: [V4, endPoint],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1046,7 +1048,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P1); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1082,6 +1084,7 @@
 							})
 						}
 						//B1层路径规划
+						that.drawP2UPP2();
 						that.drawB1DOWNB1();
 						//B2层路径规划
 						routePoints = [];
@@ -1131,7 +1134,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P1); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1167,6 +1170,7 @@
 							})
 						}
 						//B1层路径规划
+						that.drawP2UPP2();
 						that.drawB1DOWNB1();
 						that.drawB2DOWNB2();
 						//B2层路径规划
@@ -1219,7 +1223,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P1); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1255,6 +1259,7 @@
 							})
 						}
 						//B1层路径规划
+						that.drawP2UPP2();
 						that.drawB1DOWNB1();
 						that.drawB2DOWNB2();
 						that.drawB3DOWNB3();
@@ -1264,7 +1269,7 @@
 						polyline = AirocovMap.covers.paths;
 						var points = polyline.drawRoad({
 							points: [
-								V4, endPoint
+								V5, endPoint
 							],
 							getPathOnly: true
 						}, pathData);
@@ -1392,7 +1397,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P2); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1427,13 +1432,12 @@
 								}
 							})
 						}
-						that.drawP1DOWNP1();
 						//p2层路径规划
 						routePoints = [];
 						var pathData = that.getPaths(that.B1); //获取P1路径数据
 						var points = polyline.drawRoad({
 							points: [
-								V1, endPoint
+								V4, endPoint
 							],
 							getPathOnly: true
 						}, pathData);
@@ -1477,7 +1481,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P2); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1513,7 +1517,6 @@
 							})
 						}
 						//B1层路径规划
-						that.drawP1DOWNP1();
 						that.drawB1DOWNB1();
 						//B2层路径规划
 						routePoints = [];
@@ -1565,7 +1568,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P2); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1601,7 +1604,6 @@
 							})
 						}
 						//B1层路径规划
-						that.drawP1DOWNP1();
 						that.drawB1DOWNB1();
 						that.drawB2DOWNB2();
 						//B2层路径规划
@@ -1654,7 +1656,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.P2); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [startPoint, V6],
+							points: [startPoint, V1],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -1690,7 +1692,6 @@
 							})
 						}
 						//B1层路径规划
-						that.drawP1DOWNP1();
 						that.drawB1DOWNB1();
 						that.drawB2DOWNB2();
 						that.drawB3DOWNB3();
@@ -1700,7 +1701,7 @@
 						polyline = AirocovMap.covers.paths;
 						var points = polyline.drawRoad({
 							points: [
-								V4, endPoint
+								V5, endPoint
 							],
 							getPathOnly: true
 						}, pathData);
@@ -2124,7 +2125,7 @@
 						var pathData = that.getPaths(that.B4); //获取P1路径数据
 						var points = polyline.drawRoad({
 							points: [
-								V4, endPoint
+								V5, endPoint
 							],
 							getPathOnly: true
 						}, pathData);
@@ -2550,7 +2551,7 @@
 						var pathData = that.getPaths(that.B4); //获取P1路径数据
 						var points = polyline.drawRoad({
 							points: [
-								V4, endPoint
+								V5, endPoint
 							],
 							getPathOnly: true
 						}, pathData);
@@ -2978,7 +2979,7 @@
 						var pathData = that.getPaths(that.B4); //获取P1路径数据
 						var points = polyline.drawRoad({
 							points: [
-								V4, endPoint
+								V5, endPoint
 							],
 							getPathOnly: true
 						}, pathData);
@@ -3447,6 +3448,49 @@
 							})
 						}
 					},
+					//P2到P2 向上
+					drawP2UPP2: function() {
+						var that = this;
+						var routePoints = [];
+						//p1层路径规划
+						var pathData = that.getPaths(that.P2); //获取p1路径数据
+						var points = polyline.drawRoad({
+							points: [V6, V1],
+							getPathOnly: true
+						}, pathData);
+						for (var i = 0, len = points.length; i < len; i++) {
+							routePoints.push([points[i][0], 1, points[i][1]]);
+						}
+						road = polyline.drawTube({
+							points: routePoints,
+							radius: 0.8,
+							imgUrl: "./img/arrow.png"
+						});
+						if (!road) {
+							that.$toast.fail("P2层路径规划失败");
+							return;
+						}
+						// 加入地图
+						map.addToFloor({
+							object: road,
+							floorName: that.P2,
+							layerName: "pathGroup"
+						});
+						//路径动画
+						if (road.material.map) {
+							road.material.map.offset.x = 1;
+							TweenMax.to(road.material.map.offset, 1, {
+								x: 0,
+								ease: Power0.easeNone,
+								repeat: -1,
+								onStart: function() {
+									if (road.material.map.offset.x == 0) {
+										road.material.map.offset.x = 1
+									}
+								}
+							})
+						}
+					},
 					//P1到P1 向上
 					drawP1UPP1: function() {
 						var that = this;
@@ -3583,7 +3627,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.B1); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [V1, V2],
+							points: [V4, V2],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {
@@ -3755,7 +3799,7 @@
 						//p1层路径规划
 						var pathData = that.getPaths(that.B3); //获取p1路径数据
 						var points = polyline.drawRoad({
-							points: [V4, V2],
+							points: [V4, V3],
 							getPathOnly: true
 						}, pathData);
 						for (var i = 0, len = points.length; i < len; i++) {

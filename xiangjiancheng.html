@@ -53,33 +53,6 @@
 						</v-col>
 					</van-row>
 				</van-popup>
-				<!-- 添加蓝牙标签 -->
-				<div v-if="uuidpop" class="flex flex-center" style="width: 100vw;height: 100vh;z-index: 1000;background: rgba(0,0,0,0.8);position: fixed;top: 0;left: 0;box-sizing: border-box;">
-					<div style="background: #FFFFFF;padding: 20px;border-radius: 10px;box-sizing: border-box;" class="flex flex-column">
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;" v-model="uuid"
-						 placeholder="请输入uuid,标签" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="major" placeholder="请输入major" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 v-model="minor" placeholder="请输入minor,标签" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="px" placeholder="请输入px" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="py" placeholder="请输入py" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="pz" placeholder="请输入pz" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="lng" placeholder="请输入lng" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="lat" placeholder="请输入lat" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="pid" placeholder="请输入pid" />
-						<input style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;"
-						 readonly="readonly" v-model="floor" placeholder="请输入floor,楼层" />
-						<button @click="mapsave" style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;background-color: #0570DB;">确定</button>
-						<button @click="qxuuidpop" style="border-radius: 5px;width: 300px;height: 40px;box-sizing: border-box;padding: 0 10px;margin-top: 10px;">取消</button>
-					</div>
-				</div>
 			</div>
 		</div>
 		<script src="./js/vue.min.js"></script>
@@ -123,62 +96,12 @@
 						seachShow: false, //展示搜索条件
 						ismap: false, //map地图是否加载完毕
 						isfloorSwitch: true, //是否是首次获取定位
-						uuidpop: false,
-						uuid: '',
-						major: "0",
-						minor: '',
-						px: '',
-						py: '',
-						pz: '',
-						lng: '',
-						lat: '',
-						pid: '667304638512365567', //车库id
-						floor: '',
 					}
 				},
 				mounted() {
 					//创建websocket
 				},
 				methods: {
-					//取消录入蓝牙标签
-					qxuuidpop() {
-						this.uuidpop = false;
-					},
-					mapsave() {
-						var that = this;
-						if(that.uuid == "" || that.minor == ""){
-							that.$toast.fail("请输入蓝牙标签");
-							return;
-						}
-						var ajaxdata = {
-							uuid: that.uuid,
-							major: that.major,
-							minor: that.minor,
-							px: that.px,
-							py: that.py,
-							pz: that.pz,
-							lng: that.lng,
-							lat: that.lat,
-							pid: that.pid,
-							floor: that.floor,
-						}
-						$.ajax({
-							type: "post",
-							url: "http://api.cqqcjc.com:1003/map/save",
-							dataType: "json",
-							data:JSON.stringify(ajaxdata) ,
-							contentType: "application/json;charset=UTF-8",
-							success: function(data) {
-								console.log(data);
-								if(data.code == "200"){
-									that.$toast.success("蓝牙标签"+that.uuid+"添加成功");
-									that.uuidpop = false;
-								}else{
-									that.$toast.fail(data.msg);
-								}
-							}
-						});
-					},
 					initWebSocket() {
 						//判断当前浏览器是否支持WebSocket
 						if ("WebSocket" in window) {
@@ -228,9 +151,9 @@
 							that.freedata = data.data.data;
 							that.addcar();
 							// 每10秒刷新一次空闲车位
-							// setTimeout(function(){
-							// 	that.pullvacancy();
-							// },10000)
+							setTimeout(function(){
+								that.pullvacancy();
+							},10000)
 						}
 						if (data.command == "4002") {
 							console.log(data.data.data);
@@ -241,9 +164,9 @@
 								currentFloor = map.data.getFloor(startfloor);
 								that.newestloction();
 								// 每1秒刷新一次位置
-								// setTimeout(function(){
-								// 	that.pulllocation();
-								// },1000)
+								setTimeout(function(){
+									that.pulllocation();
+								},1000)
 							}
 						}
 					},
@@ -825,7 +748,7 @@
 				},
 				created() {
 					this.parkId = this.getUrlParam(location.search, "pid") ? this.getUrlParam(location.search, "pid") :
-						'667304638512365567'; //667304638512365567
+						''; //718763226317193216
 					endfloor = this.getUrlParam(location.search, "stopfloor") ? this.getUrlParam(location.search, "stopfloor") : ''; //结束楼层
 					this.searchinput = this.getUrlParam(location.search, "spacenumber") ? this.getUrlParam(location.search,
 						"spacenumber") : ''; //车位
