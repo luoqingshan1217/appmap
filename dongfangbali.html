@@ -129,7 +129,8 @@
 				el: '#app',
 				data: function() {
 					return {
-						wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						// wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						wss: "ws://192.168.0.117:1003/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
 						map: null, //map对象
 						B1: 'B1',
 						searchinput: '', //搜索坐标
@@ -203,11 +204,11 @@
 								startfloor = locationdata.floor;
 								currentFloor = map.data.getFloor(startfloor);
 								that.newestloction();
-								// 每1秒刷新一次位置
-								setTimeout(function(){
-									that.pulllocation();
-								},1000)
 							}
+							// 每1秒刷新一次位置
+							setTimeout(function(){
+								that.pulllocation();
+							},1000)
 						}
 					},
 					websocketsend(Data) {
@@ -387,6 +388,7 @@
 							var room = roomGroup.children;
 							for (var i = 0; i < room.length; i++) {
 								if (room[i].info.type.sType !== 1002) continue;
+								room[i].material.color.set('#94B7DE');
 								freedata.forEach(function(free) {
 									if (free.serial === room[i].name && room[i].parent.parent.name == free.floor) {
 										room[i].material.color.set('#237804');

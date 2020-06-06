@@ -192,11 +192,11 @@
 								startfloor = locationdata.floor;
 								currentFloor = map.data.getFloor(startfloor);
 								that.newestloction();
-								// 每1秒刷新一次位置
-								setTimeout(function(){
-									that.pulllocation();
-								},1000)
 							}
+							// 每1秒刷新一次位置
+							setTimeout(function(){
+								that.pulllocation();
+							},1000)
 						}
 					},
 					websocketsend(Data) {
@@ -579,6 +579,7 @@
 							var room = roomGroup.children;
 							for (var i = 0; i < room.length; i++) {
 								if (room[i].info.type.sType !== 1002) continue;
+								room[i].material.color.set('#94B7DE');
 								freedata.forEach(function(free) {
 									if (free.serial === room[i].name && room[i].parent.parent.name == free.floor) {
 										room[i].material.color.set('#237804');
