@@ -361,7 +361,7 @@
 								if (room[i].info.type.sType !== 1002) continue;
 								room[i].material.color.set('#94B7DE');
 								freedata.forEach(function(free) {
-									if (free.serial === room[i].name) {
+									if (free.serial === room[i].name && room[i].parent.parent.name == free.floor) {
 										room[i].material.color.set('#237804');
 									}
 								});

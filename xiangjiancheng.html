@@ -75,8 +75,8 @@
 			var targetFloor; //终点所在楼层对象
 			var endPoint = []; //结束点
 			var polyline; //路线
-			var floorslist = ['1F', 'B1'];
-			var V1 = [8.936041305767441, -15.081400328867632]; //1F出口
+			var floorslist = ['F1', 'B1'];
+			var V1 = [8.936041305767441, -15.081400328867632]; //F1出口
 			var V2 = [6.7119282491431775, -15.907771930831817]; //B1出口
 			var timemap;
 			var floorSwitch; //楼层切换控件
@@ -90,7 +90,7 @@
 					return {
 						wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
 						map: null, //map对象
-						B1: '1F',
+						B1: 'F1',
 						B2: 'B1',
 						searchinput: '', //搜索坐标
 						seachShow: false, //展示搜索条件
@@ -301,14 +301,6 @@
 						//点击地图事件
 						map.event.on('click', function(e) {
 							console.log("点击事件：", e);
-							that.uuidpop = true;
-							that.px = e.position.x;
-							that.py = e.position.z;
-							that.pz = e.position.y;
-							that.lng = e.lnglat[0];
-							that.lat = e.lnglat[1];
-							that.floor = e.target.parent.parent.name;
-							return;
 							that.clearMarker();
 							endPoint = [Number(e.position.x), Number(e.position.z)]; //获取终点坐标
 							endfloor = e.target.getParentFloor().name; //获取终点楼层
@@ -370,7 +362,7 @@
 								if (room[i].info.type.sType !== 1002) continue;
 								room[i].material.color.set('#94B7DE');
 								freedata.forEach(function(free) {
-									if (free.serial === room[i].name) {
+									if (free.serial === room[i].name && room[i].parent.parent.name == free.floor) {
 										room[i].material.color.set('#237804');
 									}
 								});
@@ -535,10 +527,10 @@
 						var that = this;
 						var name = currentFloor.name + targetFloor.name;
 						switch (name) {
-							case '1F' + 'B1':
+							case 'F1' + 'B1':
 								that.drawB1ToB2();
 								break;
-							case 'B1' + '1F':
+							case 'B1' + 'F1':
 								that.drawB2ToB1();
 								break;
 							default:
@@ -566,7 +558,7 @@
 							imgUrl: "./img/arrow.png"
 						});
 						if (!road) {
-							that.$toast.fail("1F路径规划失败");
+							that.$toast.fail("F1路径规划失败");
 							return;
 						}
 						// 加入地图
@@ -691,7 +683,7 @@
 							imgUrl: "./img/arrow.png"
 						});
 						if (!road) {
-							that.$toast.fail("1F路径规划失败");
+							that.$toast.fail("F1路径规划失败");
 							return;
 						}
 						// 加入地图
@@ -726,7 +718,7 @@
 					//获取生成的所有车库路径
 					getPaths(name) {
 						switch (name) {
-							case '1F':
+							case 'F1':
 								return paths.B1;
 							case 'B1':
 								return paths.B2;
