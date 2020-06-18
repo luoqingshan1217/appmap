@@ -175,6 +175,7 @@
 							console.log(data.data.data);
 							if (data.data.data) {
 								var locationdata = data.data.data;
+								console.log(locationdata)
 								startPoint = [Number(locationdata.px), Number(locationdata.pz)];
 								startfloor = locationdata.floor;
 								currentFloor = map.data.getFloor(startfloor);

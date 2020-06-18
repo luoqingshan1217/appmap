@@ -77,7 +77,11 @@
         {
             "sType": 0,
             "strokecolor": "#C3DFFD"
-        }
+        },
+		{
+		    "sType": 1002,
+		    "spriteHeight": "0.1"
+		}
     ],
     "moduleStyle": {
         "wall": {
