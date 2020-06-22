@@ -129,8 +129,8 @@
 				el: '#app',
 				data: function() {
 					return {
-						wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
-						// wss: "ws://192.168.0.117:1003/websocket/D41D8CD98F00B204E9800998ECF8427E", //测试环境
+						// wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						wss: "ws://192.168.0.104:1003/websocket/D41D8CD98F00B204E9800998ECF8427E", //测试环境
 						map: null, //map对象
 						B1: 'B1',
 						searchinput: '', //搜索坐标
@@ -768,13 +768,13 @@
 				},
 				created() {
 					this.parkId = this.getUrlParam(location.search, "pid") ? this.getUrlParam(location.search, "pid") :
-						''; //694932188327575553
+						'694932188327575553'; //694932188327575553
 					endfloor = this.getUrlParam(location.search, "stopfloor") ? this.getUrlParam(location.search, "stopfloor") : ''; //结束楼层
 					this.searchinput = this.getUrlParam(location.search, "spacenumber") ? this.getUrlParam(location.search,
 						"spacenumber") : ''; //车位
 					this.uid = this.getUrlParam(location.search, "uid") ? this.getUrlParam(location.search, "uid") :
 						''; //用户uid
-					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 1; //空闲车位小时
+					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 24; //空闲车位小时
 					this.initWebSocket();
 				}
 			})

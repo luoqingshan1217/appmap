@@ -88,7 +88,8 @@
 				el: '#app',
 				data: function() {
 					return {
-						wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						// wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						wss: "ws://192.168.0.104:1003/websocket/D41D8CD98F00B204E9800998ECF8427E", //测试环境
 						map: null, //map对象
 						B1: 'F1',
 						B2: 'B1',
@@ -747,7 +748,7 @@
 						"spacenumber") : ''; //车位
 					this.uid = this.getUrlParam(location.search, "uid") ? this.getUrlParam(location.search, "uid") :
 						''; //用户uid
-					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 1; //空闲车位小时
+					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 24; //空闲车位小时
 					this.initWebSocket();
 				}
 			})

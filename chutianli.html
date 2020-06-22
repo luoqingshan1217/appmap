@@ -104,7 +104,8 @@
 				el: '#app',
 				data: function() {
 					return {
-						wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						// wss: "wss://api.cqqcjc.com/system/websocket/D41D8CD98F00B204E9800998ECF8427E", //正式环境
+						wss: "ws://192.168.0.104:1003/websocket/D41D8CD98F00B204E9800998ECF8427E", //测试环境
 						map: null, //map对象
 						B1: '负一',
 						B2: '负二',
@@ -122,6 +123,7 @@
 						//判断当前浏览器是否支持WebSocket
 						if ("WebSocket" in window) {
 							//初始化weosocket(必须)
+							console.log(this.wss)
 							this.websock = new WebSocket(this.wss); //新建一个webstock对象
 							this.websock.onopen = this.websocketonopen;
 							this.websock.onmessage = this.websocketonmessage;
@@ -878,7 +880,7 @@
 						"spacenumber") : ''; //车位
 					this.uid = this.getUrlParam(location.search, "uid") ? this.getUrlParam(location.search, "uid") :
 						''; //用户uid
-					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 1; //空闲车位小时
+					this.max = this.getUrlParam(location.search, "max") ? this.getUrlParam(location.search, "max") : 24; //空闲车位小时
 					this.initWebSocket();
 				}
 			})
